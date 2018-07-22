@@ -21,7 +21,7 @@ import (
 	"path/filepath"
 
 	"github.com/BurntSushi/toml"
-	"github.com/matthewlujp/slack-cmd-client/slack"
+	"github.com/matthewlujp/slack-cmd-client/src/slack"
 	homedir "github.com/mitchellh/go-homedir"
 )
 
