@@ -5,7 +5,7 @@ import (
 	"fmt"
 
 	"github.com/manifoldco/promptui"
-	"github.com/matthewlujp/slack-cmd-client/slack-cli/slack"
+	"github.com/matthewlujp/slack-cmd-client/src/slack"
 )
 
 // Add given token to token file and enable user to send message and upload file to a workspace.
