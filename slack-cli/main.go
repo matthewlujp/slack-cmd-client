@@ -17,7 +17,7 @@ var (
 
 const (
 	cmdUsage = `  a) add-token token: create token file under the home directory
-  b) switch-workspace: switch context workspace (from registered token)
+  b) switch: switch context workspace (from registered token)
   c) list: list channels to which you can upload a file
   d) message channel_id_or_name message_content: send message to a designated channel
   e) upload channel_id_or_name file_path [-t title] [-m comment]: upload a file`
@@ -25,7 +25,7 @@ const (
 
 // Call this script with one of following subcommands
 // add-token token: create token file under the home directory and add a given token to the file
-// switch-workspace: switch context workspace (from registered token)
+// switch: switch context workspace (from registered token)
 // list: list channels to which you can upload a file
 // message channel_id_or_name: upload a file
 // upload channel_id_or_name file_path -t title -m comment: upload a file
@@ -50,7 +50,7 @@ func main() {
 			fmt.Println(err)
 			os.Exit(1)
 		}
-	case "switch-workspace":
+	case "switch":
 		fmt.Println("Switch workspace.")
 		if err := switchWorkspace(); err != nil {
 			logger.Fatalf("failed to switch workspace, %s", err)
