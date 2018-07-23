@@ -1,25 +1,17 @@
 package slack
 
-import (
-	"fmt"
-	"io"
-	"net/http"
-)
-
 const (
-	slackApiBaseURL = "https://slack.com/api"
+	// SlackAPIBaseURL is endpoint of Slack web api
+	SlackAPIBaseURL = "https://slack.com/api"
 )
 
-func buildURL(endpoint string) string {
-	return fmt.Sprintf("%s/%s", slackApiBaseURL, endpoint)
-}
+// Option type object used to modify Client
+type Option func(*Client) error
 
-func buildRequest(requestMethod, targetOp, token string, body io.Reader) (*http.Request, error) {
-	req, err := http.NewRequest(requestMethod, buildURL(targetOp), body)
-	if err != nil {
-		return nil, err
+// BaseURL returns an option which sets base url in a Client object
+func BaseURL(baseURL string) Option {
+	return func(c *Client) error {
+		c.baseURL = baseURL
+		return nil
 	}
-	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
-	req.Header.Set("Content-type", "application/x-www-form-urlencoded")
-	return req, nil
 }

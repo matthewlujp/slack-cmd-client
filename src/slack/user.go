@@ -12,8 +12,10 @@ type User struct {
 	IsBot    bool   `json:"is_bot"`
 }
 
+// Members is a slice of User
 type Members []User
 
+// ID2UserName searches a user with the given user id and returns his/her user name
 func (m Members) ID2UserName(id string) (string, error) {
 	for _, u := range m {
 		if u.ID == id {

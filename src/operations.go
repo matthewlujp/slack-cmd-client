@@ -12,7 +12,7 @@ import (
 // Token file is created in the home directory.
 // If a token file does not exist in the home directory, a new file is created.
 func registerToken(token string) error {
-	c, err := slack.NewClient(token, nil, logger)
+	c, err := slack.NewClient(token, logger)
 	if err != nil {
 		return err
 	}
@@ -120,7 +120,7 @@ func listChannels() error {
 		return err
 	}
 
-	c, err := slack.NewClient(token, nil, logger)
+	c, err := slack.NewClient(token, logger)
 	if err != nil {
 		logger.Printf("[listChannels] building new client failed, %s", err)
 		return err
@@ -151,7 +151,7 @@ func sendMessage(channelIDOrName, message string) error {
 		logger.Printf("[sendMessage] retrieving toke from config file failed, %s", err)
 		return err
 	}
-	c, err := slack.NewClient(token, nil, logger)
+	c, err := slack.NewClient(token, logger)
 	if err != nil {
 		logger.Printf("[sendMessage] building client failed, %s", err)
 		return err
@@ -179,7 +179,7 @@ func uploadFile(channelIDOrName, filepath, title, comment string) error {
 		logger.Printf("[uploadFile] retrieving toke from config file failed, %s", err)
 		return err
 	}
-	c, err := slack.NewClient(token, nil, logger)
+	c, err := slack.NewClient(token, logger)
 	if err != nil {
 		logger.Printf("[uploadFile] building client failed, %s", err)
 		return err

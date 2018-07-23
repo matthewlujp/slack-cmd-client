@@ -15,35 +15,63 @@ import (
 	"strings"
 )
 
+// Client is a wrapper for Slack web api
 type Client struct {
-	Token      string
-	HTTPClient *http.Client
-	Logger     *log.Logger
+	token      string
+	httpClient *http.Client
+	baseURL    string
+	logger     *log.Logger
 }
 
-func NewClient(token string, httpClient *http.Client, logger *log.Logger) (*Client, error) {
+// NewClient returns a client object to call Slack web api.
+// A bearer token should be obtained here: https://api.slack.com/apps, and provide as an argument.
+// You should grant several scopes as well.
+// logger is a pointer to a logging object for debug, which can be nil if you don't need.
+func NewClient(token string, logger *log.Logger, opts ...Option) (*Client, error) {
 	if token == "" {
 		return nil, errors.New("invalid token")
 	}
-	if httpClient == nil {
-		httpClient = http.DefaultClient
-	}
 	if logger == nil {
-		logger = log.New(ioutil.Discard, "", log.LstdFlags)
+		logger = log.New(ioutil.Discard, "", log.LstdFlags) // ignore error messages
 	}
-	return &Client{
-		Token:      token,
-		HTTPClient: httpClient,
-		Logger:     logger,
-	}, nil
+	c := &Client{
+		token:      token,
+		httpClient: http.DefaultClient,
+		baseURL:    SlackAPIBaseURL,
+		logger:     logger,
+	}
+
+	// parse options
+	for _, option := range opts {
+		if err := option(c); err != nil {
+			logger.Printf("[NewClient] parsing option failed, %s", err)
+			return nil, err
+		}
+	}
+
+	return c, nil
 }
 
-func (c *Client) get(method string) (*http.Response, error) {
-	req, err := buildRequest("GET", method, c.Token, nil)
+func (c *Client) buildURL(endpoint string) string {
+	return fmt.Sprintf("%s/%s", c.baseURL, endpoint)
+}
+
+func (c *Client) buildRequest(requestMethod, targetOp, token string, body io.Reader) (*http.Request, error) {
+	req, err := http.NewRequest(requestMethod, c.buildURL(targetOp), body)
 	if err != nil {
 		return nil, err
 	}
-	res, err := c.HTTPClient.Do(req)
+	req.Header.Set("Authorization", fmt.Sprintf("Bearer %s", token))
+	req.Header.Set("Content-type", "application/x-www-form-urlencoded")
+	return req, nil
+}
+
+func (c *Client) get(method string) (*http.Response, error) {
+	req, err := c.buildRequest("GET", method, c.token, nil)
+	if err != nil {
+		return nil, err
+	}
+	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -54,12 +82,12 @@ func (c *Client) get(method string) (*http.Response, error) {
 }
 
 func (c *Client) post(method string, body io.Reader) (*http.Response, error) {
-	req, err := buildRequest("POST", method, c.Token, body)
+	req, err := c.buildRequest("POST", method, c.token, body)
 	if err != nil {
 		return nil, err
 	}
 
-	res, err := c.HTTPClient.Do(req)
+	res, err := c.httpClient.Do(req)
 	if err != nil {
 		return nil, err
 	}
@@ -72,7 +100,7 @@ func (c *Client) post(method string, body io.Reader) (*http.Response, error) {
 func (c *Client) ObtainWorkspaceInfo() (*Workspace, error) {
 	res, err := c.get("team.info")
 	if err != nil {
-		c.Logger.Printf("[ObtainWorkspaceInfo] request failed, %s", err)
+		c.logger.Printf("[ObtainWorkspaceInfo] request failed, %s", err)
 		return nil, err
 	}
 	defer res.Body.Close()
@@ -84,22 +112,22 @@ func (c *Client) ObtainWorkspaceInfo() (*Workspace, error) {
 		Team  Workspace `json:"team"`
 	}{}
 	if err := json.NewDecoder(res.Body).Decode(wInfo); err != nil {
-		c.Logger.Printf("[ObtainWorkspaceInfo] failed in decoding response json, %s", err)
+		c.logger.Printf("[ObtainWorkspaceInfo] failed in decoding response json, %s", err)
 		return nil, err
 	}
 
 	if !wInfo.Ok {
-		c.Logger.Printf("[ObtainWorkspaceInfo] response does not contain workspace info, %s", wInfo.Error)
+		c.logger.Printf("[ObtainWorkspaceInfo] response does not contain workspace info, %s", wInfo.Error)
 		return nil, errors.New(wInfo.Error)
 	}
-	wInfo.Team.Token = c.Token
+	wInfo.Team.Token = c.token
 	return &wInfo.Team, nil
 }
 
 func (c *Client) GetMembers() (Members, error) {
 	res, err := c.get("users.list")
 	if err != nil {
-		c.Logger.Printf("[GetMembers] request failed, %s", err)
+		c.logger.Printf("[GetMembers] request failed, %s", err)
 		return nil, err
 	}
 	defer res.Body.Close()
@@ -111,11 +139,11 @@ func (c *Client) GetMembers() (Members, error) {
 		Members Members `json:"members"`
 	}{}
 	if err := json.NewDecoder(res.Body).Decode(parsed); err != nil {
-		c.Logger.Printf("[GetMembers] parsing json response failed")
+		c.logger.Printf("[GetMembers] parsing json response failed")
 		return nil, err
 	}
 	if !parsed.Ok {
-		c.Logger.Printf("[GetMembers] request rejected by Slack, %s", parsed.Error)
+		c.logger.Printf("[GetMembers] request rejected by Slack, %s", parsed.Error)
 		return nil, errors.New(parsed.Error)
 	}
 	return parsed.Members, nil
@@ -128,7 +156,7 @@ func (c *Client) CollectChannels() ([]Channel, error) {
 	for _, m := range []string{"channels.list", "conversations.list", "groups.list", "im.list"} {
 		chans, err := c.getChannels(m)
 		if err != nil {
-			c.Logger.Printf("[CollectChannels] inquiring channels from %s failed, %s", m, err)
+			c.logger.Printf("[CollectChannels] inquiring channels from %s failed, %s", m, err)
 			return nil, err
 		}
 
@@ -144,7 +172,8 @@ func (c *Client) CollectChannels() ([]Channel, error) {
 	var channels []Channel
 	members, err := c.GetMembers()
 	if err != nil {
-		c.Logger.Printf("[CollectChannels] obtaining members failed, %s", err)
+		c.logger.Printf("[CollectChannels] obtaining members failed, %s", err)
+		return nil, err
 	}
 	for _, c := range collectedChannels {
 		if c.IsDirectMessage {
@@ -198,7 +227,7 @@ func (c *Client) SendMessage(channelID, content string) error {
 	v.Set("as_user", "true")
 	res, err := c.post("chat.postMessage", strings.NewReader(v.Encode()))
 	if err != nil {
-		c.Logger.Printf("[SendMessage] post failed, %s", err)
+		c.logger.Printf("[SendMessage] post failed, %s", err)
 		return err
 	}
 	defer res.Body.Close()
@@ -208,11 +237,11 @@ func (c *Client) SendMessage(channelID, content string) error {
 		Error string `json:"error"`
 	}{}
 	if err := json.NewDecoder(res.Body).Decode(parsed); err != nil {
-		c.Logger.Printf("[SendMessage] decoding json response failed, %s", err)
+		c.logger.Printf("[SendMessage] decoding json response failed, %s", err)
 		return err
 	}
 	if !parsed.Ok {
-		c.Logger.Printf("[SendMessage] file upload request rejected by Slack, %s", parsed.Error)
+		c.logger.Printf("[SendMessage] file upload request rejected by Slack, %s", parsed.Error)
 		return errors.New(parsed.Error)
 	}
 
@@ -226,31 +255,31 @@ func (c *Client) UploadFile(channelID, filepath string, uploadOptions map[string
 	// write file
 	fileWriter, err := multiWriter.CreateFormFile("file", filepath)
 	if err != nil {
-		c.Logger.Printf("[UploadFile] creating form-data for file failed, %s", err)
+		c.logger.Printf("[UploadFile] creating form-data for file failed, %s", err)
 		return err
 	}
 	f, err := os.Open(filepath)
 	if err != nil {
-		c.Logger.Printf("[UploadFile] opening file failed, %s", err)
+		c.logger.Printf("[UploadFile] opening file failed, %s", err)
 		return err
 	}
 	defer f.Close()
 	if _, err := io.Copy(fileWriter, f); err != nil {
-		c.Logger.Printf("[UploadFile] copying file contents to form writer failed, %s", err)
+		c.logger.Printf("[UploadFile] copying file contents to form writer failed, %s", err)
 		return err
 	}
 
 	// add upload options
 	uploadOptions["channels"] = channelID
-	uploadOptions["token"] = c.Token
+	uploadOptions["token"] = c.token
 	for k, v := range uploadOptions {
 		w, err := multiWriter.CreateFormField(k)
 		if err != nil {
-			c.Logger.Printf("[UploadFile] making %s field failed, %s", k, err)
+			c.logger.Printf("[UploadFile] making %s field failed, %s", k, err)
 			return err
 		}
 		if _, err := io.Copy(w, strings.NewReader(v)); err != nil {
-			c.Logger.Printf("[UploadFile] writing option %s:%s failed, %s", k, v, err)
+			c.logger.Printf("[UploadFile] writing option %s:%s failed, %s", k, v, err)
 			return err
 		}
 	}
@@ -259,14 +288,14 @@ func (c *Client) UploadFile(channelID, filepath string, uploadOptions map[string
 	multiWriter.Close()
 
 	// post
-	url := buildURL("files.upload")
+	url := c.buildURL("files.upload")
 	res, err := http.Post(url, contentType, bf)
 	if err != nil {
-		c.Logger.Printf("[UploadFile] posting file failed, %s", err)
+		c.logger.Printf("[UploadFile] posting file failed, %s", err)
 		return err
 	}
 	if res.StatusCode != http.StatusOK {
-		c.Logger.Printf("[UploadFile] response status %s", res.Status)
+		c.logger.Printf("[UploadFile] response status %s", res.Status)
 		return fmt.Errorf("file upload post status, %s", res.Status)
 	}
 	defer res.Body.Close()
@@ -277,11 +306,11 @@ func (c *Client) UploadFile(channelID, filepath string, uploadOptions map[string
 		Error string `json:"error"`
 	}{}
 	if err := json.NewDecoder(res.Body).Decode(parsed); err != nil {
-		c.Logger.Printf("[UploadFile] decoding json response failed, %s", err)
+		c.logger.Printf("[UploadFile] decoding json response failed, %s", err)
 		return err
 	}
 	if !parsed.Ok {
-		c.Logger.Printf("[UploadFile] file upload request rejected by Slack, %s", parsed.Error)
+		c.logger.Printf("[UploadFile] file upload request rejected by Slack, %s", parsed.Error)
 		return errors.New(parsed.Error)
 	}
 	return nil

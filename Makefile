@@ -17,4 +17,9 @@ clean:
 	rm slack-cli
 
 test:
-	@echo "test not defined yet"
+	@echo "test package slack"
+	cd src/slack && go test
+	@echo "\n"
+	@echo "test package main"
+	cd src && go test
+	@echo "\n"

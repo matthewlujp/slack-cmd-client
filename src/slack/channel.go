@@ -1,5 +1,6 @@
 package slack
 
+// Channel holds info of a channel
 type Channel struct {
 	ID              string   `json:"id"`
 	Name            string   `json:"name"`
@@ -10,6 +11,7 @@ type Channel struct {
 	User            string   `json:"user"`
 }
 
+// Purpose holds explanation of a channel
 type Purpose struct {
 	Value string `json:"value"`
 }
