@@ -1,10 +1,25 @@
 
+ifndef TARGETOS
+	TARGETOS = darwin
+endif
+
+ifndef TARGETARCH
+	TARGETARCH = amd64
+
+endif
+
+ifndef OUT
+	BINOUT = ../slack-cli
+else
+	BINOUT = ../$(OUT)
+endif
+
 .PHONY: install, build, distribute, clean, test
 install: build distribute clean ;
 
 build:
 	dep ensure
-	cd src && go build -o ../slack-cli .
+	cd src && GOOS=$(TARGETOS) GOARCH=$(TARGETARCH) go build -o $(BINOUT) .
 
 distribute:
 ifdef GOPATH
