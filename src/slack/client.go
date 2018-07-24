@@ -97,6 +97,9 @@ func (c *Client) post(method string, body io.Reader) (*http.Response, error) {
 	return res, nil
 }
 
+// ObtainWorkspaceInfo gets the current workspace info from Slack api.
+// team:read scope should be granted beforehand.
+// See https://api.slack.com/methods/team.info
 func (c *Client) ObtainWorkspaceInfo() (*Workspace, error) {
 	res, err := c.get("team.info")
 	if err != nil {
@@ -124,6 +127,9 @@ func (c *Client) ObtainWorkspaceInfo() (*Workspace, error) {
 	return &wInfo.Team, nil
 }
 
+// GetMembers gets members of the current workspace from Slack api.
+// users:read scope should be granted beforehand.
+// See https://api.slack.com/methods/users.list
 func (c *Client) GetMembers() (Members, error) {
 	res, err := c.get("users.list")
 	if err != nil {
@@ -149,8 +155,10 @@ func (c *Client) GetMembers() (Members, error) {
 	return parsed.Members, nil
 }
 
-// CollectChannels collects channels which a user joins
+// CollectChannels collects channels which a user joins in the current workspace.
 // It collects channels from channels.list, conversaions.list, groups.list, and im.list (direct message).
+// channels:read, groups:read, im:read, and mpim:read scopes should be granted.
+// See https://api.slack.com/methods/channels.list, https://api.slack.com/methods/groups.list, https://api.slack.com/methods/conversations.list, and https://api.slack.com/methods/im.list
 func (c *Client) CollectChannels() ([]Channel, error) {
 	collectedChannels := make(map[string]Channel)
 	for _, m := range []string{"channels.list", "conversations.list", "groups.list", "im.list"} {
@@ -220,6 +228,9 @@ func (c *Client) getChannels(method string) ([]Channel, error) {
 	return []Channel{}, nil
 }
 
+// SendMessage sends a message to a designated channel.
+// chat:write:user scope should be granted
+// See https://api.slack.com/methods/chat.postMessage
 func (c *Client) SendMessage(channelID, content string) error {
 	v := url.Values{}
 	v.Set("channel", channelID)
@@ -248,6 +259,9 @@ func (c *Client) SendMessage(channelID, content string) error {
 	return nil
 }
 
+// UploadFile uploads a file to a designated channel.
+// files:write:user scope should be granted.
+// See https://api.slack.com/methods/files.upload
 func (c *Client) UploadFile(channelID, filepath string, uploadOptions map[string]string) error {
 	bf := new(bytes.Buffer)
 	multiWriter := multipart.NewWriter(bf)
