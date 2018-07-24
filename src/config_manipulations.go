@@ -2,12 +2,12 @@
 // Data format:
 // 		[[workspaces]]
 // 		name = "workspace A"
-// 		toke = "xoxo-hoge-a"
+// 		token = "xoxo-hoge-a"
 // 		domain = "domain a"
 //
 // 		[[workspaces]]
 // 		name = "workspace B"
-// 		toke = "xoxo-hoge-b"
+// 		token = "xoxo-hoge-b"
 // 		domain = "domain b"
 //
 //		current_workspace_token = "xoxo-hoge-a"
@@ -25,7 +25,7 @@ import (
 	homedir "github.com/mitchellh/go-homedir"
 )
 
-const (
+var (
 	defaultTokenFile = ".slack_uploader.toml"
 )
 
