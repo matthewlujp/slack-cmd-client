@@ -26,7 +26,7 @@ import (
 )
 
 var (
-	defaultTokenFile = ".slack_uploader.toml"
+	defaultTokenFile = ".slack_cmd_cli.toml"
 )
 
 type config struct {

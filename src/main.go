@@ -51,7 +51,7 @@ func main() {
 			os.Exit(1)
 		}
 	case "switch":
-		fmt.Println("Switch workspace.")
+		fmt.Println("Switching workspace.")
 		if err := switchWorkspace(); err != nil {
 			logger.Fatalf("failed to switch workspace, %s", err)
 		}

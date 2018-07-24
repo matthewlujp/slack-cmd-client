@@ -82,7 +82,6 @@ func switchWorkspace() error {
 		fmt.Println("No workspace is registered.")
 		return nil
 	}
-	fmt.Println(conf)
 
 	workspaceNames := make([]string, 0, len(conf.Workspaces))
 	var currentWorkspaceName string
@@ -93,7 +92,7 @@ func switchWorkspace() error {
 		}
 	}
 	prompt := promptui.Select{
-		Label: fmt.Sprintf("Current workspace is \"%s\". Select Workspace", currentWorkspaceName),
+		Label: fmt.Sprintf("Current workspace is \"%s\". Select a workspace to switch", currentWorkspaceName),
 		Items: workspaceNames,
 	}
 	selectedID, result, err := prompt.Run()
@@ -103,7 +102,6 @@ func switchWorkspace() error {
 
 	// switch current workspace token
 	conf.CurrentWorkspaceToken = conf.Workspaces[selectedID].Token
-	fmt.Println(conf)
 	if err := saveConfig(conf); err != nil {
 		logger.Printf("[switchWorkspace] failed in saveing new context token")
 		return err
